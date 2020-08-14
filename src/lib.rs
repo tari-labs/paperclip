@@ -22,5 +22,5 @@ pub mod actix {
 
     pub use paperclip_actix::{api_v2_errors, api_v2_operation, Apiv2Schema, Apiv2Security};
     pub use paperclip_actix::{web, App, Mountable, OpenApiExt};
-    pub use paperclip_core::v2::{OperationModifier, ResponderWrapper};
+    pub use paperclip_core::v2::{OperationModifier, ResponderWrapper, OperationWrapper};
 }

@@ -38,6 +38,7 @@ pub fn emit_v2_operation(input: TokenStream) -> TokenStream {
     };
 
     let mut wrapper = None;
+    let mut ret: Option<Box<Type>> = None;
     match &mut item_ast.sig.output {
         ReturnType::Default => {
             emit_warning!(
@@ -46,6 +47,7 @@ pub fn emit_v2_operation(input: TokenStream) -> TokenStream {
             );
         }
         ReturnType::Type(_, ty) => {
+            ret = Some(ty.clone());
             let t = quote!(#ty).to_string();
             // FIXME: This is a hack for functions returning known
             // `impl Trait`. Need a better way!
@@ -54,6 +56,7 @@ pub fn emit_v2_operation(input: TokenStream) -> TokenStream {
             }
 
             if let (Type::ImplTrait(_), Some(ref w)) = (&**ty, wrapper.as_ref()) {
+                ret = Some(Box::new(syn::parse2(quote!(#w<#ty>)).unwrap()));
                 if item_ast.sig.asyncness.is_some() {
                     *ty = Box::new(syn::parse2(quote!(#w<#ty>)).expect("parsing wrapper type"));
                 } else {
@@ -86,10 +89,73 @@ pub fn emit_v2_operation(input: TokenStream) -> TokenStream {
         );
     }
 
-    quote!(
-        #item_ast
-    )
-    .into()
+    if item_ast.sig.asyncness.is_some() {
+        use syn::{FnArg, punctuated::Pair};
+
+        let inputs = &item_ast.sig.inputs;
+        let params_ty: Punctuated<Box<syn::Type>,_> = inputs.pairs()
+        .filter_map(|pair| match pair {
+            Pair::Punctuated(FnArg::Typed(pat), p) => Some(Pair::new(pat.ty.clone(), Some(p.clone()))),
+            Pair::End(FnArg::Typed(pat)) => Some(Pair::new(pat.ty.clone(), None)),
+            _ => None,
+        })
+        .collect();
+
+        let params_names: Punctuated<Box<syn::Pat>,_> = inputs.pairs()
+        .filter_map(|pair| match pair {
+            Pair::Punctuated(FnArg::Typed(pat), p) => Some(Pair::new(pat.pat.clone(), Some(p.clone()))),
+            Pair::End(FnArg::Typed(pat)) => Some(Pair::new(pat.pat.clone(), None)),
+            _ => None,
+        })
+        .collect();
+
+        let ident = &mut item_ast.sig.ident;
+        let summary = ident.to_string();
+        let name = ident.clone();
+        *ident = Ident::new(&format!("inner_{}", ident), ident.span());
+        let inner_name = ident.clone();
+        let ret_fut = quote!(std::pin::Pin<Box<dyn Future<Output=#ret>>>);
+        let boxed_fn = Ident::new(&format!("boxed_{}", ident), ident.span());
+        let generics = &item_ast.sig.generics;
+        let generics_call = if !generics.params.is_empty() {
+            let params: Punctuated<Ident,_> = generics.params.pairs().filter_map(|pair|
+                match pair {
+                    Pair::Punctuated(syn::GenericParam::Type(gen), punct) => Some(Pair::new(gen.ident.clone(), Some(punct.clone()))),
+                    Pair::End(syn::GenericParam::Type(gen)) => Some(Pair::new(gen.ident.clone(), None)),
+                    _ => None,
+                }
+            ).collect();
+            quote!(::<#params>)
+        } else {
+            quote!()
+        };
+
+        println!("{} {}", quote!(#generics), generics_call);
+
+        quote!(
+            fn #boxed_fn #generics(#inputs) -> #ret_fut {
+                #item_ast
+
+                Box::pin(#inner_name #generics_call(#params_names))
+            }
+
+            pub fn #name #generics() -> paperclip::actix::OperationWrapper<
+                impl Fn(#params_ty) -> #ret_fut + Clone,
+                (#params_ty),
+                #ret_fut,
+                #ret
+            > {
+                let mut operation = paperclip::v2::models::DefaultOperationRaw::default();
+                operation.description = Some(#summary.to_string());
+                paperclip::actix::OperationWrapper::new(operation, #boxed_fn #generics_call)
+            }
+        )
+        .into()
+    } else {
+        quote!(
+            #item_ast
+        ).into()
+    }
 }
 
 /// Actual parser and emitter for `api_v2_errors` macro.
