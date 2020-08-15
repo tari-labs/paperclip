@@ -112,11 +112,12 @@ pub fn emit_v2_operation(input: TokenStream) -> TokenStream {
 
         let ident = &mut item_ast.sig.ident;
         let name = ident.clone();
-        *ident = Ident::new(&format!("inner_{}", ident), ident.span());
+        *ident = Ident::new(&format!("operation_inner_{}", ident), ident.span());
         let inner_name = ident.clone();
         let ret_fut = quote!(std::pin::Pin<Box<dyn std::future::Future<Output=#ret>>>);
-        let boxed_fn = Ident::new(&format!("boxed_{}", ident), ident.span());
+        let boxed_fn = Ident::new(&format!("operation_boxed_{}", ident), ident.span());
         let generics = &item_ast.sig.generics;
+        let generics_where = &item_ast.sig.generics.where_clause;
         let generics_call = if !generics.params.is_empty() {
             let params: Punctuated<Ident,_> = generics.params.pairs().filter_map(|pair|
                 match pair {
@@ -141,7 +142,7 @@ pub fn emit_v2_operation(input: TokenStream) -> TokenStream {
         };
 
         quote!(
-            fn #boxed_fn #generics(#inputs) -> #ret_fut {
+            fn #boxed_fn #generics(#inputs) -> #ret_fut #generics_where {
                 #item_ast
 
                 Box::pin(#inner_name #generics_call(#params_names))
@@ -152,7 +153,7 @@ pub fn emit_v2_operation(input: TokenStream) -> TokenStream {
                 (#params_ty),
                 #ret_fut,
                 #ret
-            > {
+            >  #generics_where {
                 let mut operation = paperclip::v2::models::DefaultOperationRaw::default();
                 operation.summary = #summary;
                 operation.description = #description;
