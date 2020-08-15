@@ -114,7 +114,7 @@ pub fn emit_v2_operation(input: TokenStream) -> TokenStream {
         let name = ident.clone();
         *ident = Ident::new(&format!("inner_{}", ident), ident.span());
         let inner_name = ident.clone();
-        let ret_fut = quote!(std::pin::Pin<Box<dyn Future<Output=#ret>>>);
+        let ret_fut = quote!(std::pin::Pin<Box<dyn std::future::Future<Output=#ret>>>);
         let boxed_fn = Ident::new(&format!("boxed_{}", ident), ident.span());
         let generics = &item_ast.sig.generics;
         let generics_call = if !generics.params.is_empty() {
