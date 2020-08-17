@@ -102,18 +102,9 @@ pub fn emit_v2_operation(input: TokenStream) -> TokenStream {
         })
         .collect();
 
-        let params_names: Punctuated<Box<syn::Pat>,_> = inputs.pairs()
-        .filter_map(|pair| match pair {
-            Pair::Punctuated(FnArg::Typed(pat), p) => Some(Pair::new(pat.pat.clone(), Some(p.clone()))),
-            Pair::End(FnArg::Typed(pat)) => Some(Pair::new(pat.pat.clone(), None)),
-            _ => None,
-        })
-        .collect();
-
         let ident = &mut item_ast.sig.ident;
         let name = ident.clone();
         *ident = Ident::new(&format!("operation_inner_{}", ident), ident.span());
-        let inner_name = ident.clone();
         let ret_fut = quote!(std::pin::Pin<Box<dyn std::future::Future<Output=#ret>>>);
         let boxed_fn = Ident::new(&format!("operation_boxed_{}", ident), ident.span());
         let generics = &item_ast.sig.generics;
@@ -140,12 +131,14 @@ pub fn emit_v2_operation(input: TokenStream) -> TokenStream {
         } else {
             quote!(None)
         };
+        let main_code = item_ast.block;
 
         quote!(
             fn #boxed_fn #generics(#inputs) -> #ret_fut #generics_where {
-                #item_ast
-
-                Box::pin(#inner_name #generics_call(#params_names))
+                let fut = async move {
+                    #main_code
+                };
+                Box::pin(fut)
             }
 
             pub fn #name #generics() -> paperclip::actix::OperationWrapper<
