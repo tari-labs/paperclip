@@ -460,7 +460,6 @@ U: Responder + 'static,
 impl<F, I, R, U> OperationWrapper<F, I, R, U>
 where
     F: Apiv2Operation<I, U> + actix_web::dev::Factory<I, R, U>,
-//    F: Apiv2Operation<I, U> + actix_web::dev::Factory<I, R, U> + Clone + 'static,
     I: actix_web::FromRequest + 'static,
     U: Responder + 'static,
     R: Future<Output = U> + 'static,

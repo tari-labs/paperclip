@@ -16,9 +16,15 @@ pub struct Pet {
 }
 
 #[derive(Serialize, Deserialize, Apiv2Schema)]
-pub struct Output {
+pub struct Answer {
     /// Answer on question
     answer: String,
+}
+
+#[derive(Serialize, Deserialize, Apiv2Schema)]
+pub struct Question {
+    /// Question on query
+    question: String,
 }
 
 #[derive(Deserialize, Serialize, Apiv2Schema)]
@@ -56,13 +62,13 @@ where
     }))
 }
 
-
-/// Any kind of a pet
+/// Answer on question
 #[api_v2_operation]
-async fn get_answer() -> Result<web::Json<Output>, Error>
+async fn get_answer(_question: web::Query<Question>, _data: web::Data<String>) -> Result<web::Json<Answer>, Error>
 {
-    Ok(web::Json(Output { answer: "earth has a shape of dino".to_string() }))
+    Ok(web::Json(Answer { answer: "we live for pets".to_string() }))
 }
+
 
 #[actix_rt::main]
 async fn main() {
@@ -87,8 +93,8 @@ async fn main() {
             .update_tags(tag_vec)
             .service(
                 web::resource("/random")
+                    .route(web::patch().to(abstract_pet::<String, u16>))
                     .route(web::post().to(some_pet))
-                    .route(web::get().to(abstract_pet::<String, u16>))
             )
             .service(
                 web::resource("/question")
