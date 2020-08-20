@@ -10,7 +10,13 @@ use serde::{Serialize, Deserialize};
 pub struct Pet {
     /// Pick a good one.
     name: String,
-    id: Option<u64>,
+    id: Option<uuid::Uuid>,
+}
+
+#[derive(Serialize, Deserialize, Apiv2Schema)]
+pub struct Output {
+    /// Answer on question
+    answer: String,
 }
 
 #[derive(Deserialize, Serialize, Apiv2Schema)]
@@ -35,7 +41,15 @@ async fn some_pet(_data: web::Data<String>, _pet: web::Json<Pet>) -> Result<web:
 async fn abstract_pet<P, T: 'static>(_data: web::Data<T>, mut _pet: web::Json<AbstractPet<P>>) -> Result<web::Json<Pet>, Error>
 where P: Serialize + for <'de> Deserialize< 'de> + 'static
 {
-    Ok(web::Json(Pet { name: "my super puppy".to_string(), id: Some(1) }))
+    Ok(web::Json(Pet { name: "my super puppy".to_string(), id: Some(uuid::Uuid::default()) }))
+}
+
+
+/// Any kind of a pet
+#[api_v2_operation]
+async fn get_answer() -> Result<web::Json<Output>, Error>
+{
+    Ok(web::Json(Output { answer: "earth has a dinosaur shape".to_string() }))
 }
 
 #[actix_rt::main]
@@ -47,6 +61,7 @@ async fn main() {
         .service(web::resource("/random")
             .route(web::post().to(some_pet))
             .route(web::get().to(abstract_pet::<String, u16>))
+            .route(web::get().to(get_answer))
         )
         .with_json_spec_at("/api/spec")
         .build()
