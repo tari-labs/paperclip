@@ -52,7 +52,7 @@ where
 {
     Ok(web::Json(Pet {
         name: "my super puppy".to_string(),
-        id: Some(1),
+        id: Some(uuid::Uuid::default()),
     }))
 }
 
@@ -88,7 +88,10 @@ async fn main() {
             .service(
                 web::resource("/random")
                     .route(web::post().to(some_pet))
-                    .route(web::get().to(abstract_pet::<String, u16>)),
+                    .route(web::get().to(abstract_pet::<String, u16>))
+            )
+            .service(
+                web::resource("/question")
                     .route(web::get().to(get_answer))
             )
             .with_json_spec_at("/api/spec")
@@ -97,6 +100,7 @@ async fn main() {
     .await;
 
     let req = test::TestRequest::with_uri("/api/spec").to_request();
-    let res = String::from_utf8(test::read_response(&mut app, req).await.to_vec()).unwrap();
-    println!("{}", res);
+    let res = test::read_response(&mut app, req).await.to_vec();
+    let doc: serde_json::Value = serde_json::from_slice(&res).unwrap();
+    println!("{}", serde_json::to_string_pretty(&doc).unwrap());
 }
