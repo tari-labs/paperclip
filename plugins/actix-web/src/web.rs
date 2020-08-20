@@ -12,9 +12,7 @@ use actix_web::dev::{
 };
 use actix_web::guard::Guard;
 use actix_web::{http::Method, Error, FromRequest, Responder};
-use paperclip_core::v2::models::{
-    DefaultOperationRaw, DefaultPathItemRaw, DefaultSchemaRaw, HttpMethod, SecurityScheme,
-};
+use paperclip_core::v2::models::{DefaultOperationRaw, DefaultPathItemRaw, DefaultSchemaRaw, HttpMethod, SecurityScheme};
 use paperclip_core::v2::schema::Apiv2Operation;
 
 use std::collections::BTreeMap;
@@ -32,8 +30,8 @@ const METHODS: &[Method] = &[
     Method::PATCH,
 ];
 
-/* Resource */
 
+/* Resource */
 /// Wrapper for [`actix_web::Resource`](https://docs.rs/actix-web/*/actix_web/struct.Resource.html)
 pub struct Resource<R = actix_web::Resource> {
     path: String,
@@ -184,6 +182,7 @@ where
         let operation = wrapper();
         let mut op = operation.operation();
         op.set_parameter_names_from_path_template(&self.path);
+
         for method in METHODS {
             self.operations.insert(method.into(), op.clone());
         }
