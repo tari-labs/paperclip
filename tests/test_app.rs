@@ -1246,9 +1246,10 @@ fn test_operation_with_generics() {
     }
 
     #[api_v2_operation]
-    async fn get_pet_by_name<S: paperclip::v2::schema::Apiv2Schema + ToString>(
-        _path: web::Path<S>,
-    ) -> Result<web::Json<Vec<Pet>>, ()> {
+    async fn get_pet_by_name<S>(_path: web::Path<S>) -> Result<web::Json<Vec<Pet>>, ()>
+    where
+        S: paperclip::v2::schema::Apiv2Schema + ToString,
+    {
         Ok(web::Json(vec![Pet::default()]))
     }
 
