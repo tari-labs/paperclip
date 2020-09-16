@@ -43,6 +43,7 @@ pub fn emit_v2_operation(attrs: TokenStream, input: TokenStream) -> TokenStream 
     let generics = &item_ast.sig.generics;
     let (mut struct_generics, mut generics_call) = (quote!(), quote!());
     let mut struct_definition = quote!(struct #unit_struct;);
+    let generics_where = &generics.where_clause;
     let generics_params = extract_generics_params(&item_ast);
     if !generics_params.is_empty() {
         generics_call = quote!(::<#generics_params> { p: std::marker::PhantomData });
@@ -155,7 +156,7 @@ pub fn emit_v2_operation(attrs: TokenStream, input: TokenStream) -> TokenStream 
 
         #item_ast
 
-        impl #generics paperclip::v2::schema::Apiv2Operation for #unit_struct #struct_generics {
+        impl #generics paperclip::v2::schema::Apiv2Operation for #unit_struct #struct_generics #generics_where {
             fn operation() -> paperclip::v2::models::DefaultOperationRaw {
                 use paperclip::actix::OperationModifier;
                 let mut op = paperclip::v2::models::DefaultOperationRaw::default();
