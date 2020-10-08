@@ -666,7 +666,7 @@ pub fn emit_v2_security(input: TokenStream) -> TokenStream {
         security_attrs.get("parent"),
     ) {
         (Some(type_), None) => {
-            let alias = security_attrs.get("alias").unwrap_or_else(|| type_);
+            let alias = security_attrs.get("alias").unwrap_or(type_);
             let quoted_description = quote_option(security_attrs.get("description"));
             let quoted_name = quote_option(security_attrs.get("name"));
             let quoted_in = quote_option(security_attrs.get("in"));
@@ -869,7 +869,7 @@ fn handle_field_struct(
         let docs = extract_documentation(&field.attrs);
         let docs = docs.trim();
 
-        let mut gen = if !flatten {
+        let mut gen = if !SerdeFlatten::exists(&field.attrs) {
             quote!({
                 let mut s = #ty_ref::raw_schema();
                 if !#docs.is_empty() {
@@ -1086,9 +1086,8 @@ impl SerdeProps {
 struct SerdeFlatten;
 
 impl SerdeFlatten {
-    /// Traverses the field attributes and returns the renamed value from the first matching
-    /// `#[serde(rename = "...")]` pattern.
-    fn from_field_attrs(field_attrs: &[Attribute]) -> bool {
+    /// Traverses the field attributes and returns true if there is `#[serde(flatten)]`.
+    fn exists(field_attrs: &[Attribute]) -> bool {
         for meta in field_attrs.iter().filter_map(|a| a.parse_meta().ok()) {
             let inner_meta = match meta {
                 Meta::List(ref l)
