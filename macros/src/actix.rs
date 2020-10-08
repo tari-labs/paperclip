@@ -862,7 +862,7 @@ fn handle_field_struct(
             field_name = prop.rename(&field_name);
         }
 
-        let flatten = SerdeFlatten::from_field_attrs(&field.attrs);
+        let flatten = SerdeFlatten::exists(&field.attrs);
 
         let (ty_ref, is_required) = get_field_type(&field);
 
